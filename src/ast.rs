@@ -1,102 +1,347 @@
 use crate::lexer::Token;
 
 #[derive(Debug)]
-pub enum Expr {
-    Number(i64),
-    Command(Command),
+pub enum Operation {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    CompareEquals,
 }
 
 #[derive(Debug)]
-pub enum Command {
-    Push(i64),
-    OutputAsNumber,
-    Exit,
+pub enum DataType {
+    Int,
+    String,
 }
 
-pub fn build_ast(tokens: &[Token]) -> Vec<Expr> {
-    let mut ast = Vec::new();
-    let mut iter = tokens.iter().peekable();
+#[derive(Debug)]
+pub enum Expression {
+    Variable(String),
+    Integer(i32),
+    Declaration {
+        identifier: String,
+        dataType: DataType,
+        value: Box<Expression>,
+    },
+    BinaryOp {
+        operator: Operation,
+        left: Box<Expression>,
+        right: Box<Expression>,
+    },
+}
 
-    while let Some(token) = iter.next() {
+#[derive(Debug)]
+pub enum Statement {
+    Print(Expression),
+    IntDeclaration(String),
+    Assignment(String, Expression),
+    Exit,
+    WhileLoop {
+        condition: Box<Expression>,
+        body: Box<Statement>,
+    },
+    Block(Vec<Statement>),
+}
+
+pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
+    let mut ast = vec![];
+    let mut tokens = tokens.iter().peekable();
+
+    while let Some(&token) = tokens.peek() {
         match token {
-            Token::Push => {
-                if let Some(&Token::Number(value)) = iter.peek() {
-                    iter.next(); // Consume the Number token
-                    ast.push(Expr::Command(Command::Push(*value)));
+            Token::Int => {
+                tokens.next();
+                let identifier = match tokens.next() {
+                    Some(&Token::Identifier(ref id)) => id.clone(),
+                    _ => return Err("Expected identifier".to_string()),
+                };
+                ast.push(Statement::IntDeclaration(identifier.clone()));
+                if let Some(&Token::Assign) = tokens.next() {
+                    let expr = parse_expression(&mut tokens)?;
+                    ast.push(Statement::Assignment(identifier, expr));
                 } else {
-                    panic!("Expected a number after 'push' command!");
+                    return Err("Expected =".to_string());
+                }
+
+                if let Some(Token::Semicolon) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err("Expected ;".to_string());
                 }
             }
-            Token::OutputAsNumber => ast.push(Expr::Command(Command::OutputAsNumber)),
-            Token::Exit => ast.push(Expr::Command(Command::Exit)),
-            Token::Number(value) => ast.push(Expr::Number(*value)),
-            _ => {
-                // Handle other tokens or syntax errors
-                panic!("Invalid token encountered while building AST!");
+            Token::Const => {
+                tokens.next();
+                let identifier = match tokens.next() {
+                    Some(&Token::Identifier(ref id)) => id.clone(),
+                    _ => return Err("Expected identifier".to_string()),
+                };
+                if let Some(&Token::Integer(value)) = tokens.next() {
+                    ast.push(Statement::IntDeclaration(identifier.clone()));
+                    ast.push(Statement::Assignment(
+                        identifier,
+                        Expression::Integer(value),
+                    ));
+                } else {
+                    return Err("Expected integer value".to_string());
+                }
+
+                if let Some(Token::Semicolon) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err("Expected ;".to_string());
+                }
+            }
+            Token::Print => {
+                tokens.next();
+                let expr = parse_expression(&mut tokens)?;
+                ast.push(Statement::Print(expr));
+
+                if let Some(Token::Semicolon) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err("Expected ;".to_string());
+                }
+            }
+            Token::Exit => {
+                tokens.next();
+                ast.push(Statement::Exit);
+
+                if let Some(Token::Semicolon) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err("Expected ;".to_string());
+                }
+            }
+            Token::While => {
+                tokens.next();
+                if let Some(&Token::LParen) = tokens.peek() {
+                    tokens.next();
+                    let condition: Expression = parse_expression(&mut tokens)?;
+
+                    if let Some(&Token::RParen) = tokens.peek() {
+                        tokens.next();
+                        ast.push(Statement::WhileLoop {
+                            condition: Box::new(condition),
+                            body: Box::new(parse_statement(&mut tokens)?),
+                        });
+                    } else {
+                        return Err("Expected )".to_string());
+                    }
+                } else {
+                    return Err("Expected (".to_string());
+                }
+            }
+            Token::EOF => break,
+            _ => return Err(format!("Unexpected token: {:?}", token)),
+        }
+    }
+
+    Ok(ast)
+}
+
+fn parse_statement(
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Result<Statement, String> {
+    // TODO: Rearrange the statement order.
+    //   Currently, the expression 2 * 3 - 4 is interpreted as 2 * (3 - 4),
+    //   but it should be calculated as (2 * 3) - 4 (parsing left to right).
+    let token = tokens.next();
+    let statement = match token {
+        Some(&Token::Const) => {
+            let identifier = match tokens.next() {
+                Some(&Token::Identifier(ref id)) => id.clone(),
+                _ => return Err("Expected identifier".to_string()),
+            };
+            if let Some(&Token::Integer(value)) = tokens.next() {
+                Statement::IntDeclaration(identifier)
+            } else {
+                return Err("Expected integer value".to_string());
             }
         }
-    }
-
-    ast
-}
-
-fn convert_number(value: i64) -> String {
-    let mut code = String::new();
-
-    if value >= 0 {
-        code.push_str(" ");
-    } else {
-        code.push_str(r"\t");
-    }
-    let mut value = value;
-    while value != 0 {
-        if value % 2 == 0 {
-            code.push_str(" ");
-        } else {
-            code.push_str(r"\t");
+        Some(&Token::Print) => {
+            let expr = parse_expression(tokens)?;
+            Statement::Print(expr)
         }
-        value /= 2;
-    }
-
-    code.push_str("\\n");
-
-    code
-}
-
-pub fn generate_code(ast: &[Expr]) -> String {
-    let mut code: String = String::new();
-
-    for expr in ast {
-        match expr {
-            Expr::Number(_) => {
-                panic!("Unexpected number in AST");
+        Some(&Token::Exit) => Statement::Exit,
+        Some(&Token::While) => {
+            tokens.next();
+            if let Some(&Token::LParen) = tokens.peek() {
+                tokens.next();
+                let condition: Expression = parse_expression(tokens)?;
+                let mut body: Vec<Statement> = vec![];
+                while let Some(&token) = tokens.peek() {
+                    match token {
+                        Token::RParen => {
+                            tokens.next();
+                            break;
+                        }
+                        _ => body.push(parse_statement(tokens)?),
+                    }
+                }
+                Statement::WhileLoop {
+                    condition: Box::new(condition),
+                    body: Box::new(Statement::Block(body)),
+                }
+            } else {
+                return Err("Expected (".to_string());
             }
-            Expr::Command(command) => match command {
-                Command::Push(arg) => code.push_str(&format!("  {}", convert_number(*arg))),
-                Command::OutputAsNumber => code.push_str(r"\t\n \t"),
-                Command::Exit => code.push_str(r"\n\n\n"),
-            },
         }
-    }
+        Some(&Token::Identifier(ref id)) => {
+            if let Some(&Token::Assign) = tokens.peek() {
+                tokens.next();
+                let expr = parse_expression(tokens)?;
+                Statement::Assignment(id.clone(), expr)
+            } else {
+                return Err("Expected =".to_string());
+            }
+        }
+        Some(&Token::CurlyL) => {
+            let mut body: Vec<Statement> = vec![];
+            while let Some(&token) = tokens.peek() {
+                match token {
+                    Token::CurlyR => {
+                        tokens.next();
+                        break;
+                    }
+                    Token::Semicolon => {
+                        tokens.next();
+                    }
+                    _ => body.push(parse_statement(tokens)?),
+                }
+            }
+            Statement::Block(body)
+        }
+        _ => return Err(format!("Statement, unexpected token: {:?}", token)),
+    };
 
-    code
+    Ok(statement)
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::lexer;
+fn parse_expression(
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Result<Expression, String> {
+    let expr: Expression = parse_term(tokens)?;
+    Ok(expr)
+}
 
-    use super::*;
-
-    #[test]
-    fn test_code_generation() {
-        let input = "push +1 output_as_number exit";
-        let tokens = lexer::tokenize(input);
-        let ast = build_ast(&tokens);
-
-        let expected_output = r"   \t\n\t\n \t\n\n\n";
-        let generated_code = generate_code(&ast);
-
-        assert_eq!(generated_code, expected_output);
+fn parse_term(
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Result<Expression, String> {
+    let mut expr: Expression = parse_factor(tokens)?;
+    while let Some(&token) = tokens.peek() {
+        match token {
+            Token::Plus => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Add,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Minus => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Sub,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Equals => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::CompareEquals,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            _ => break,
+        }
     }
+    Ok(expr)
+}
+
+fn parse_factor(
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Result<Expression, String> {
+    let mut expr: Expression = parse_unary(tokens)?;
+    while let Some(&token) = tokens.peek() {
+        match token {
+            Token::Star => {
+                tokens.next();
+                let right = parse_unary(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Mul,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Slash => {
+                tokens.next();
+                let right = parse_unary(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Div,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Percent => {
+                tokens.next();
+                let right = parse_unary(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Mod,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            _ => break,
+        }
+    }
+    Ok(expr)
+}
+
+fn parse_unary(
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Result<Expression, String> {
+    let mut expr: Expression = parse_primary(tokens)?;
+    while let Some(&token) = tokens.peek() {
+        match token {
+            Token::Minus => {
+                tokens.next();
+                expr = Expression::BinaryOp {
+                    operator: Operation::Sub,
+                    left: Box::new(Expression::Integer(0)),
+                    right: Box::new(expr),
+                };
+            }
+            _ => break,
+        }
+    }
+    Ok(expr)
+}
+
+fn parse_primary(
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+) -> Result<Expression, String> {
+    let token = tokens.next();
+    let expr = match token {
+        Some(&Token::Integer(value)) => Expression::Integer(value),
+        Some(&Token::Identifier(ref id)) => Expression::Variable(id.clone()),
+        Some(&Token::LParen) => {
+            let expr = parse_expression(tokens)?;
+            if let Some(&Token::RParen) = tokens.peek() {
+                tokens.next();
+                expr
+            } else {
+                return Err("Expected )".to_string());
+            }
+        }
+        _ => return Err(format!("Primary, unexpected token: {:?}", token)),
+    };
+
+    Ok(expr)
 }
