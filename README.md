@@ -23,6 +23,19 @@ This project entails a Rust implementation of a compiler for the [Whitespace](ht
   ```
 </details>
 
+<details>
+    <summary>Basic while loop</summery>
+
+    ```
+    int m = 8;
+    while (m < 11) {
+        print(m);
+        m = m + 1;
+    }
+    exit;
+    ```
+</details>
+
 ---
 
 **Note**: _This project is currently a work in progress._

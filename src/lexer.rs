@@ -20,6 +20,8 @@ pub enum Token {
     Percent,
 
     Equals,
+    Less,
+    LessOrEqual,
 
     Exit,
     EOF,
@@ -133,6 +135,15 @@ impl<'a> Lexer<'a> {
                         self.advance();
                     } else {
                         tokens.push(Token::Assign);
+                    }
+                }
+                '<' => {
+                    self.advance();
+                    if self.peek() == Some('=') {
+                        tokens.push(Token::LessOrEqual);
+                        self.advance();
+                    } else {
+                        tokens.push(Token::Less);
                     }
                 }
                 _ => {

@@ -8,6 +8,7 @@ pub enum Operation {
     Div,
     Mod,
     CompareEquals,
+    CompareLessThan,
 }
 
 #[derive(Debug)]
@@ -255,6 +256,15 @@ fn parse_term(
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
                     operator: Operation::CompareEquals,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Less => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::CompareLessThan,
                     left: Box::new(expr),
                     right: Box::new(right),
                 };

@@ -11,8 +11,11 @@ mod util;
 
 fn main() {
     let code = "
-    int m = 11;
-    print(m);
+    int m = 8;
+    while (m < 11) {
+        print(m);
+        m = m + 1;
+    }
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);
@@ -22,7 +25,7 @@ fn main() {
     match ast::parse(&tokens) {
         Ok(ast) => {
             println!("--AST--\n{:#?}\n", ast);
-            let CodeOutput { code, debug_code } = transpiler::transpile(ast);
+            let CodeOutput { code, debug_code } = transpiler::transpile(ast, None);
             println!("---DEBUG---\n{}\n", debug_code);
             println!("---VISIBLE---\n{}\n", util::unbleach(code.clone()));
             fs::create_dir_all("out").expect("Unable to create directory");
