@@ -11,6 +11,20 @@ pub enum Operation {
     CompareLessThan,
 }
 
+impl ToString for Operation {
+    fn to_string(&self) -> String {
+        match self {
+            Operation::Add => "+".to_string(),
+            Operation::Sub => "-".to_string(),
+            Operation::Mul => "*".to_string(),
+            Operation::Div => "/".to_string(),
+            Operation::Mod => "%".to_string(),
+            Operation::CompareEquals => "==".to_string(),
+            Operation::CompareLessThan => "<".to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum DataType {
     Int,
@@ -31,6 +45,37 @@ pub enum Expression {
         left: Box<Expression>,
         right: Box<Expression>,
     },
+}
+
+impl ToString for Expression {
+    fn to_string(&self) -> String {
+        match self {
+            Expression::Variable(id) => format!("{}", id),
+            Expression::Integer(value) => format!("{}", value.to_string()),
+            Expression::Declaration {
+                identifier,
+                dataType,
+                value,
+            } => format!(
+                "let {} = {}",
+                identifier,
+                match dataType {
+                    DataType::Int => value.to_string(),
+                    DataType::String => value.to_string(),
+                }
+            ),
+            Expression::BinaryOp {
+                operator,
+                left,
+                right,
+            } => format!(
+                "{} {} {}",
+                left.to_string(),
+                operator.to_string(),
+                right.to_string()
+            ),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -320,14 +365,14 @@ fn parse_unary(
     let mut expr: Expression = parse_primary(tokens)?;
     while let Some(&token) = tokens.peek() {
         match token {
-            Token::Minus => {
-                tokens.next();
-                expr = Expression::BinaryOp {
-                    operator: Operation::Sub,
-                    left: Box::new(Expression::Integer(0)),
-                    right: Box::new(expr),
-                };
-            }
+            // Token::Minus => {
+            //     tokens.next();
+            //     expr = Expression::BinaryOp {
+            //         operator: Operation::Sub,
+            //         left: Box::new(Expression::Integer(0)),
+            //         right: Box::new(expr),
+            //     };
+            // }
             _ => break,
         }
     }

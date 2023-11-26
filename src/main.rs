@@ -12,10 +12,7 @@ mod util;
 fn main() {
     let code = "
     int m = 8;
-    while (m < 11) {
-        print(m);
-        m = m + 1;
-    }
+    print(m - 10);
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);

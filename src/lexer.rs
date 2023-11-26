@@ -11,6 +11,7 @@ pub enum Token {
     Semicolon,
     Print,
     LParen,
+    /// )
     RParen,
 
     Plus,
