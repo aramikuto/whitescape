@@ -24,7 +24,7 @@ This project entails a Rust implementation of a compiler for the [Whitespace](ht
 </details>
 
 <details>
-    <summary>Basic while loop</summery>
+    <summary>Basic while loop</summary>
 
     ```
     int m = 8;
