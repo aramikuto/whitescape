@@ -264,6 +264,45 @@ fn evaluate_binary_op(
                 type_: VariableType::Int,
             }
         }
+        Operation::Mul => {
+            let CodeOutput {
+                code: c,
+                debug_code: dc,
+            } = IMP::Arithmetic(ArithmeticOperations::Multiply).gen();
+            code.push_str(&c);
+            debug_code.push(dc);
+            EvaluationResult {
+                code,
+                debug_code,
+                type_: VariableType::Int,
+            }
+        }
+        Operation::Div => {
+            let CodeOutput {
+                code: c,
+                debug_code: dc,
+            } = IMP::Arithmetic(ArithmeticOperations::DivideInteger).gen();
+            code.push_str(&c);
+            debug_code.push(dc);
+            EvaluationResult {
+                code,
+                debug_code,
+                type_: VariableType::Int,
+            }
+        }
+        Operation::Mod => {
+            let CodeOutput {
+                code: c,
+                debug_code: dc,
+            } = IMP::Arithmetic(ArithmeticOperations::Modulo).gen();
+            code.push_str(&c);
+            debug_code.push(dc);
+            EvaluationResult {
+                code,
+                debug_code,
+                type_: VariableType::Int,
+            }
+        }
         _ => {
             panic!("Unsupported operator");
         }

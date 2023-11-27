@@ -109,6 +109,18 @@ impl<'a> Lexer<'a> {
                         }
                     }
                 }
+                '*' => {
+                    tokens.push(Token::Star);
+                    self.advance();
+                }
+                '/' => {
+                    tokens.push(Token::Slash);
+                    self.advance();
+                }
+                '%' => {
+                    tokens.push(Token::Percent);
+                    self.advance();
+                }
                 '(' => {
                     tokens.push(Token::LParen);
                     self.advance();

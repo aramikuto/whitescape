@@ -190,9 +190,6 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
 fn parse_statement(
     tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
 ) -> Result<Statement, String> {
-    // TODO: Rearrange the statement order.
-    //   Currently, the expression 2 * 3 - 4 is interpreted as 2 * (3 - 4),
-    //   but it should be calculated as (2 * 3) - 4 (parsing left to right).
     let token = tokens.next();
     let statement = match token {
         Some(&Token::Const) => {
@@ -292,6 +289,33 @@ fn parse_term(
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
                     operator: Operation::Sub,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Star => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Mul,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Slash => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Div,
+                    left: Box::new(expr),
+                    right: Box::new(right),
+                };
+            }
+            Token::Percent => {
+                tokens.next();
+                let right = parse_factor(tokens)?;
+                expr = Expression::BinaryOp {
+                    operator: Operation::Mod,
                     left: Box::new(expr),
                     right: Box::new(right),
                 };
