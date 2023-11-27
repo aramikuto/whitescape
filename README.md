@@ -40,17 +40,16 @@ The transpiler supports basic arithmetic operations: addition, subtraction, mult
 </details>
 
 <details>
-    <summary>Basic while loop</summary>
+  <summary>Basic while loop</summary>
 
-    ```
-    int m = 8;
-    while (m < 11) {
-        print(m);
-        m = m + 1;
-    }
-    exit;
-    ```
-
+  ```
+  int m = 8;
+  while (m < 11) {
+      print(m);
+      m = m + 1;
+  }
+  exit;
+  ```
 </details>
 
 You can find the interpreter implementation [here](https://github.com/aramikuto/code-challenges/tree/main/challenges/whitespace/interpreter).
