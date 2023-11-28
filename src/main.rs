@@ -11,7 +11,9 @@ mod util;
 
 fn main() {
     let code = "
-    print(\"Hello, world\");
+    int a;
+    read(a);
+    print(a + 1);
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);

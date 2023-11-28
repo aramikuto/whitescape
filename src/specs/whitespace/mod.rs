@@ -89,6 +89,8 @@ impl HeapOperations {
 pub enum IOOperations {
     PrintAsChar,
     PrintAsNumber,
+    ReadAsChar,
+    ReadAsNumber,
 }
 
 impl IOOperations {
@@ -102,6 +104,14 @@ impl IOOperations {
             IOOperations::PrintAsNumber => CodeOutput {
                 debug_code: format!("print_stack_top_as_number"),
                 code: format!("{} \t", Self::PREFIX),
+            },
+            IOOperations::ReadAsChar => CodeOutput {
+                debug_code: format!("read_char"),
+                code: format!("{}\t ", Self::PREFIX),
+            },
+            IOOperations::ReadAsNumber => CodeOutput {
+                debug_code: format!("read_number"),
+                code: format!("{}\t\t", Self::PREFIX),
             },
         }
     }

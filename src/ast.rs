@@ -90,6 +90,7 @@ pub enum Statement {
         condition: Box<Expression>,
         body: Box<Statement>,
     },
+    Call(String, Vec<Expression>),
     Block(Vec<Statement>),
 }
 
@@ -106,19 +107,18 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
                     _ => return Err("Expected identifier".to_string()),
                 };
                 ast.push(Statement::IntDeclaration(identifier.clone()));
-                if let Some(&Token::Assign) = tokens.next() {
+                if let Some(&Token::Assign) = tokens.peek() {
+                    tokens.next();
                     let expr = parse_expression(&mut tokens)?;
                     ast.push(Statement::Assignment(identifier, expr));
-                } else {
-                    return Err("Expected =".to_string());
                 }
-
                 if let Some(Token::Semicolon) = tokens.peek() {
                     tokens.next();
                 } else {
                     return Err("Expected ;".to_string());
                 }
             }
+            // TODO: Delete?
             Token::Const => {
                 tokens.next();
                 let identifier = match tokens.next() {
@@ -181,6 +181,25 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
                     return Err("Expected (".to_string());
                 }
             }
+            Token::Identifier(name) => match name.as_str() {
+                "read" => {
+                    tokens.next();
+                    let expr = parse_expression(&mut tokens)?;
+                    match expr {
+                        Expression::Variable(id) => ast.push(Statement::Call(
+                            name.clone(),
+                            vec![Expression::Variable(id)],
+                        )),
+                        _ => return Err(format!("Unexpected identifier: {}", name)),
+                    }
+                    if let Some(Token::Semicolon) = tokens.peek() {
+                        tokens.next();
+                    } else {
+                        return Err("Expected ;".to_string());
+                    }
+                }
+                _ => return Err(format!("Unexpected identifier: {}", name)),
+            },
             Token::EOF => break,
             _ => return Err(format!("Unexpected token: {:?}", token)),
         }
