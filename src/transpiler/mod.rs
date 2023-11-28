@@ -1,3 +1,4 @@
+mod built_in;
 mod state;
 mod tests;
 
@@ -355,31 +356,7 @@ pub fn transpile(ast: Vec<Statement>, state: Option<state::State>) -> CodeOutput
                 res.add(code, debug_code);
             }
             Statement::Call(name, args) => match name.as_str() {
-                "read" => {
-                    let target = args.get(0).unwrap();
-                    if let Expression::Variable(name) = target {
-                        let variable = state.heap_allocation_map.get(&name).unwrap();
-                        let type_ = variable.type_();
-                        let addr = variable.offset();
-
-                        let CodeOutput { code, debug_code } =
-                            IMP::Stack(StackOperations::PushNumber(addr)).gen();
-                        res.add(code, debug_code);
-
-                        match type_ {
-                            VariableType::Int => {
-                                let CodeOutput { code, debug_code } =
-                                    IMP::IO(IOOperations::ReadAsNumber).gen();
-                                res.add(code, debug_code);
-                            }
-                            _ => {
-                                panic!("Only integer values are supported for now");
-                            }
-                        }
-                    } else {
-                        panic!("Unsupported argument");
-                    }
-                }
+                "read" => built_in::IO::read(&mut state, &args, &mut res),
                 _ => {
                     panic!("Unsupported function");
                 }

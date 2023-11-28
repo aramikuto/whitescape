@@ -13,7 +13,7 @@ fn main() {
     let code = "
     int a;
     read(a);
-    print(a + 1);
+    print(a + 2);
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);

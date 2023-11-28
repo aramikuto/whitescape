@@ -39,6 +39,17 @@ The transpiler supports basic arithmetic operations: addition, subtraction, mult
 </details>
 
 <details>
+  <summary>Read a number</summary>
+  
+  ```
+  int a;
+  read(a);
+  print(a + 1);
+  exit;
+  ```
+</details>
+
+<details>
   <summary>Print an integer variable</summary>
   
   ```
