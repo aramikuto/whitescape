@@ -3,14 +3,43 @@
 ## Table of Contents
 
 - [Description](#description)
+- [Usage](#usage)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
 - [Syntax](#syntax)
-- [Example Programs](#example-programs)
-- [Work in Progress](#work-in-progress)
-- [Interpreter](#interpreter)
+  - [Example Programs](#example-programs)
 
 ## Description
 
 The whitescape is a project that aims to transpile a custom high-order-language into the esoteric [Whitespace](http://compsoc.dur.ac.uk/whitespace/tutorial.php) programming language using Rust. I created it to familiarize myself with Rust 🦀 and challenge myself by building a complex program in an unfamiliar field.
+
+## Usage
+
+1. Clone the repository.
+1. Write your program within the `code` variable inside the `main.rs` file.
+1. Run `cargo run`. Upon successful compilation, the resulting whitespace code will be outputted to the `out/a.out` file.
+
+## Roadmap
+
+This project isn't about making a brand-new popular language. It's focused on building a basic yet complete high-level language that will be converted into whitespace code.
+
+- [ ] Implement basic arithmetic and IO.
+  - [x] Addition, subtraction.
+  - [x] Integer input.
+  - [ ] Output for integers and strings.
+  - [ ] Multiplication, division, modulo.
+  - [ ] Input for arbitrary length strings.
+- [ ] Implement basic flow control.
+  - [x] While loop.
+  - [ ] Functions.
+- [ ] Implement more advanced data types like strings.
+- [ ] Add configuration options for code input and output.
+- [ ] Improve project source code readability.
+- [ ] Implement improved syntax checking with easily understandable errors.
+
+## Contributing
+
+Any contributions are more than welcome!
 
 ## Syntax
 
@@ -73,8 +102,6 @@ exit;
 
 </details>
 
-You can find the interpreter implementation [here](https://github.com/aramikuto/code-challenges/tree/main/challenges/whitespace/interpreter).
-
 ---
 
-**Note**: _This project is currently a work in progress._
+**Note**: _Please note that this project is a work in progress._
