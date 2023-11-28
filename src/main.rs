@@ -11,8 +11,7 @@ mod util;
 
 fn main() {
     let code = "
-    int m = 8;
-    print(m * (2 + 1));
+    print(\"Hello, world\");
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);

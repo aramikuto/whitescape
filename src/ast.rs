@@ -40,6 +40,7 @@ pub enum Expression {
         dataType: DataType,
         value: Box<Expression>,
     },
+    Literal(String),
     BinaryOp {
         operator: Operation,
         left: Box<Expression>,
@@ -50,6 +51,7 @@ pub enum Expression {
 impl ToString for Expression {
     fn to_string(&self) -> String {
         match self {
+            Expression::Literal(value) => format!("{}", value),
             Expression::Variable(id) => format!("{}", id),
             Expression::Integer(value) => format!("{}", value.to_string()),
             Expression::Declaration {
@@ -265,13 +267,6 @@ fn parse_statement(
 fn parse_expression(
     tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
 ) -> Result<Expression, String> {
-    let expr: Expression = parse_term(tokens)?;
-    Ok(expr)
-}
-
-fn parse_term(
-    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
-) -> Result<Expression, String> {
     let mut expr: Expression = parse_factor(tokens)?;
     while let Some(&token) = tokens.peek() {
         match token {
@@ -408,6 +403,7 @@ fn parse_primary(
 ) -> Result<Expression, String> {
     let token = tokens.next();
     let expr = match token {
+        Some(&Token::Literal(ref value)) => Expression::Literal(value.clone()),
         Some(&Token::Integer(value)) => Expression::Integer(value),
         Some(&Token::Identifier(ref id)) => Expression::Variable(id.clone()),
         Some(&Token::LParen) => {

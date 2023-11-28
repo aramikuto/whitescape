@@ -10,22 +10,65 @@ pub enum Token {
     Integer(i32),
     Semicolon,
     Print,
+    /// {}
     LParen,
     /// )
     RParen,
+    Comma,
 
     Plus,
     Minus,
     Star,
+    /// /
     Slash,
     Percent,
 
+    /// ==
     Equals,
+    /// <
     Less,
+    /// <=
     LessOrEqual,
+    Literal(String),
+
+    /// proc
+    Procedure,
 
     Exit,
     EOF,
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s: String = match self {
+            Token::Const => "const".to_string(),
+            Token::Int => "int".to_string(),
+            Token::While => "while".to_string(),
+            Token::CurlyL => "{".to_string(),
+            Token::CurlyR => "}".to_string(),
+            Token::Identifier(s) => s.clone(),
+            Token::Assign => "=".to_string(),
+            Token::Integer(i) => i.to_string(),
+            Token::Semicolon => ";".to_string(),
+            Token::Print => "print".to_string(),
+            Token::LParen => "(".to_string(),
+            Token::RParen => ")".to_string(),
+            Token::Comma => ".to_string(),".to_string(),
+            Token::Plus => "+".to_string(),
+            Token::Minus => "-".to_string(),
+            Token::Star => "".to_string(),
+            Token::Slash => "/".to_string(),
+            Token::Percent => "%".to_string(),
+            Token::Equals => "==".to_string(),
+            Token::Less => "<".to_string(),
+            Token::LessOrEqual => "<=".to_string(),
+            Token::Procedure => "proc".to_string(),
+            Token::Literal(v) => v.clone(),
+            Token::Exit => "exit".to_string(),
+            Token::EOF => "EOF".to_string(),
+        };
+        write!(f, "{}", s)
+    }
 }
 
 pub struct Lexer<'a> {
@@ -64,6 +107,20 @@ impl<'a> Lexer<'a> {
 
         while let Some(ch) = self.peek() {
             match ch {
+                '"' => {
+                    self.advance();
+                    let mut value = String::new();
+                    while let Some(ch) = self.peek() {
+                        if ch == '"' {
+                            break;
+                        } else {
+                            value.push(ch);
+                            self.advance();
+                        }
+                    }
+                    self.advance();
+                    tokens.push(Token::Literal(value));
+                }
                 'a'..='z' | 'A'..='Z' => {
                     let mut identifier = String::new();
                     while let Some(ch) = self.peek() {
@@ -80,6 +137,7 @@ impl<'a> Lexer<'a> {
                         "print" => tokens.push(Token::Print),
                         "exit" => tokens.push(Token::Exit),
                         "while" => tokens.push(Token::While),
+                        "proc" => tokens.push(Token::Procedure),
                         _ => tokens.push(Token::Identifier(identifier)),
                     }
                 }
@@ -97,6 +155,10 @@ impl<'a> Lexer<'a> {
                             tokens.push(Token::Minus);
                         }
                     }
+                }
+                ',' => {
+                    tokens.push(Token::Comma);
+                    self.advance();
                 }
                 '+' => {
                     self.advance();

@@ -21,6 +21,15 @@ The transpiler supports basic arithmetic operations: addition, subtraction, mult
 ### Example programs
 
 <details>
+  <summary>Hello world</summary>
+  
+  ```
+  print("Hello, world");
+  exit;
+  ```
+</details>
+
+<details>
   <summary>Print a number</summary>
   
   ```
@@ -42,14 +51,15 @@ The transpiler supports basic arithmetic operations: addition, subtraction, mult
 <details>
   <summary>Basic while loop</summary>
 
-  ```
-  int m = 8;
-  while (m < 11) {
-      print(m);
-      m = m + 1;
-  }
-  exit;
-  ```
+```
+int m = 8;
+while (m < 11) {
+    print(m);
+    m = m + 1;
+}
+exit;
+```
+
 </details>
 
 You can find the interpreter implementation [here](https://github.com/aramikuto/code-challenges/tree/main/challenges/whitespace/interpreter).

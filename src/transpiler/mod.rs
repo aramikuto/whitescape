@@ -355,6 +355,16 @@ pub fn transpile(ast: Vec<Statement>, state: Option<state::State>) -> CodeOutput
                 res.add(code, debug_code);
             }
             Statement::Print(expression) => match expression {
+                Expression::Literal(value) => {
+                    for ch in value.chars() {
+                        let CodeOutput { code, debug_code } =
+                            IMP::Stack(StackOperations::PushNumber(ch as i32)).gen();
+                        res.add(code, debug_code);
+                        let CodeOutput { code, debug_code } =
+                            IMP::IO(IOOperations::PrintAsChar).gen();
+                        res.add(code, debug_code);
+                    }
+                }
                 Expression::Integer(value) => {
                     let CodeOutput { code, debug_code } =
                         IMP::Stack(StackOperations::PushNumber(value)).gen();
