@@ -7,7 +7,10 @@
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [Syntax](#syntax)
-  - [Example Programs](#example-programs)
+  - [Expressions](#expressions)
+  - [Strings](#strings)
+- [Built-in Functions](#built-in-functions)
+- [Example Programs](#example-programs)
 
 ## Description
 
@@ -28,7 +31,7 @@ This project isn't about making a brand-new popular language. It's focused on bu
   - [x] Integer input.
   - [ ] Output for integers and strings.
   - [ ] Multiplication, division, modulo.
-  - [ ] Input for arbitrary length strings.
+  - [x] Input for arbitrary length strings.
 - [ ] Implement basic flow control.
   - [x] While loop.
   - [ ] Functions.
@@ -47,7 +50,21 @@ Any contributions are more than welcome!
 
 The transpiler supports basic arithmetic operations: addition, subtraction, multiplication, and division. Operations are executed from left to right, diverging from the conventional mathematical order. It's crucial to separate all operands by a space for valid expressions. For instance, instead of `1+2+3`, it should be written as `1 + 2 + 3`.
 
-### Example programs
+### Strings
+
+```
+string[13] greeting = "Hello world!"
+```
+
+The code above defines a string with an initial value. String sizes are mandatory; the size must account for the null terminator placed at the end of the string (`string[2] one_symbol = "a"`).
+
+## Built-in Functions
+
+#### `concat(target, source)`
+
+Concatenate the content of the source to the top of the target.
+
+### Example Programs
 
 <details>
   <summary>Hello world</summary>
@@ -97,6 +114,20 @@ while (m < 11) {
     print(m);
     m = m + 1;
 }
+exit;
+```
+
+</details>
+
+<details>
+  <summary>Great user</summary>
+
+```
+string[32] greeting = "Hello, ";
+string[25] name;
+read(name);
+concat(greeting, name);
+print(greeting);
 exit;
 ```
 

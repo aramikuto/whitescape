@@ -11,9 +11,11 @@ mod util;
 
 fn main() {
     let code = "
-    int a;
-    read(a);
-    print(a + 2);
+    string[32] greeting = \"Hello, \";
+    string[25] name;
+    read(name);
+    concat(greeting, name);
+    print(greeting);
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);

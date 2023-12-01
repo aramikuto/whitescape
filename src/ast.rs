@@ -84,6 +84,7 @@ impl ToString for Expression {
 pub enum Statement {
     Print(Expression),
     IntDeclaration(String),
+    StringDeclaration(String, usize),
     Assignment(String, Expression),
     Exit,
     WhileLoop {
@@ -107,6 +108,44 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
                     _ => return Err("Expected identifier".to_string()),
                 };
                 ast.push(Statement::IntDeclaration(identifier.clone()));
+                if let Some(&Token::Assign) = tokens.peek() {
+                    tokens.next();
+                    let expr = parse_expression(&mut tokens)?;
+                    ast.push(Statement::Assignment(identifier, expr));
+                }
+                if let Some(Token::Semicolon) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err("Expected ;".to_string());
+                }
+            }
+            Token::String => {
+                tokens.next();
+                if let Some(&Token::LSquare) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err(format!("Expected [, found {:?}", tokens.peek()));
+                }
+                let length = match tokens.next() {
+                    Some(&Token::Integer(value)) => {
+                        if value <= 0 {
+                            return Err("String size must be greater than 0".to_string());
+                        }
+                        let value = value as usize;
+                        if let Some(&Token::RSquare) = tokens.peek() {
+                            tokens.next();
+                            value
+                        } else {
+                            return Err("Expected ]".to_string());
+                        }
+                    }
+                    _ => return Err("Expected integer value".to_string()),
+                };
+                let identifier = match tokens.next() {
+                    Some(&Token::Identifier(ref id)) => id.clone(),
+                    _ => return Err("Expected identifier".to_string()),
+                };
+                ast.push(Statement::StringDeclaration(identifier.clone(), length));
                 if let Some(&Token::Assign) = tokens.peek() {
                     tokens.next();
                     let expr = parse_expression(&mut tokens)?;
@@ -191,6 +230,33 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
                             vec![Expression::Variable(id)],
                         )),
                         _ => return Err(format!("Unexpected identifier: {}", name)),
+                    }
+                    if let Some(Token::Semicolon) = tokens.peek() {
+                        tokens.next();
+                    } else {
+                        return Err("Expected ;".to_string());
+                    }
+                }
+                "concat" => {
+                    tokens.next();
+                    if let Some(&Token::LParen) = tokens.peek() {
+                        tokens.next();
+                        let mut args = vec![];
+                        while let Some(&token) = tokens.peek() {
+                            match token {
+                                Token::RParen => {
+                                    tokens.next();
+                                    break;
+                                }
+                                Token::Comma => {
+                                    tokens.next();
+                                }
+                                _ => args.push(parse_expression(&mut tokens)?),
+                            }
+                        }
+                        ast.push(Statement::Call(name.clone(), args));
+                    } else {
+                        return Err("Expected (".to_string());
                     }
                     if let Some(Token::Semicolon) = tokens.peek() {
                         tokens.next();

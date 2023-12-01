@@ -38,6 +38,7 @@ enum HeapVariableSize {
     Float,
     Char,
     Bool,
+    String(usize),
 }
 
 impl HeapVariableSize {
@@ -47,6 +48,7 @@ impl HeapVariableSize {
             HeapVariableSize::Float => 4,
             HeapVariableSize::Char => 1,
             HeapVariableSize::Bool => 1,
+            HeapVariableSize::String(size) => (*size) as i32 * Self::Char.size(),
         }
     }
 }
@@ -54,6 +56,7 @@ impl HeapVariableSize {
 #[derive(Clone, Copy)]
 pub enum VariableType {
     Int,
+    String(usize),
     Float,
     Char,
     Bool,
@@ -63,6 +66,7 @@ impl std::fmt::Display for VariableType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VariableType::Int => write!(f, "i32"),
+            VariableType::String(length) => write!(f, "String[{}]", length),
             VariableType::Float => write!(f, "f32"),
             VariableType::Char => write!(f, "char"),
             VariableType::Bool => write!(f, "bool"),
@@ -319,44 +323,83 @@ pub fn transpile(ast: Vec<Statement>, state: Option<state::State>) -> CodeOutput
             Statement::IntDeclaration(name) => {
                 state.heap_allocation_map.allocate(name, VariableType::Int);
             }
-            Statement::Assignment(name, value) => {
-                match value {
-                    Expression::Integer(value) => {
-                        let CodeOutput { code, debug_code } =
-                            IMP::Stack(StackOperations::PushNumber(value)).gen();
-                        res.add(code, debug_code);
-                    }
-                    Expression::BinaryOp {
-                        operator,
-                        left,
-                        right,
-                    } => {
-                        let (code, debug_code, ..) = evaluate_expression_to_stack(
-                            &Expression::BinaryOp {
-                                operator,
-                                left,
-                                right,
-                            },
-                            &state.heap_allocation_map,
-                            0,
-                        );
-                        res.add(code, debug_code.render());
-                    }
-                    _ => {
-                        panic!("Unsupported expression");
-                    }
-                }
-                let addr = state.heap_allocation_map.get(&name).unwrap().offset();
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(addr)).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Store).gen();
-                res.add(code, debug_code);
+            Statement::StringDeclaration(name, length) => {
+                state
+                    .heap_allocation_map
+                    .allocate(name, VariableType::String(length));
             }
+            Statement::Assignment(name, value) => match value {
+                Expression::Integer(value) => {
+                    let CodeOutput { code, debug_code } =
+                        IMP::Stack(StackOperations::PushNumber(value)).gen();
+                    res.add(code, debug_code);
+
+                    let addr = state.heap_allocation_map.get(&name).unwrap().offset();
+                    let CodeOutput { code, debug_code } =
+                        IMP::Stack(StackOperations::PushNumber(addr)).gen();
+                    res.add(code, debug_code);
+                    let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
+                    res.add(code, debug_code);
+                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Store).gen();
+                    res.add(code, debug_code);
+                }
+                Expression::Literal(value) => {
+                    res.add("".to_string(), "# write string literal".to_string());
+                    let mut addr = state.heap_allocation_map.get(&name).unwrap().offset();
+                    for ch in value.chars() {
+                        let CodeOutput { code, debug_code } =
+                            IMP::Stack(StackOperations::PushNumber(addr)).gen();
+                        res.add(code, debug_code);
+                        let CodeOutput { code, debug_code } =
+                            IMP::Stack(StackOperations::PushNumber(ch as i32)).gen();
+                        res.add(code, debug_code);
+                        let CodeOutput { code, debug_code } =
+                            IMP::Heap(HeapOperations::Store).gen();
+                        res.add(code, debug_code);
+                        addr += HeapVariableSize::Char.size();
+                    }
+                    let CodeOutput { code, debug_code } =
+                        IMP::Stack(StackOperations::PushNumber(addr)).gen();
+                    res.add(code, debug_code);
+                    let CodeOutput { code, debug_code } =
+                        IMP::Stack(StackOperations::PushNumber(0)).gen();
+                    res.add(code, debug_code);
+                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Store).gen();
+                    res.add(code, debug_code);
+                    res.add("".to_string(), "".to_string());
+                }
+                Expression::BinaryOp {
+                    operator,
+                    left,
+                    right,
+                } => {
+                    let (code, debug_code, ..) = evaluate_expression_to_stack(
+                        &Expression::BinaryOp {
+                            operator,
+                            left,
+                            right,
+                        },
+                        &state.heap_allocation_map,
+                        0,
+                    );
+                    res.add(code, debug_code.render());
+
+                    let addr = state.heap_allocation_map.get(&name).unwrap().offset();
+                    let CodeOutput { code, debug_code } =
+                        IMP::Stack(StackOperations::PushNumber(addr)).gen();
+                    res.add(code, debug_code);
+                    let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
+                    res.add(code, debug_code);
+                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Store).gen();
+                    res.add(code, debug_code);
+                }
+                _ => {
+                    panic!("Unsupported expression");
+                }
+            },
             Statement::Call(name, args) => match name.as_str() {
                 "read" => built_in::IO::read(&mut state, &args, &mut res),
+                "concat" => built_in::String::concat(&mut state, &args, &mut res),
                 _ => {
                     panic!("Unsupported function");
                 }
@@ -385,19 +428,75 @@ pub fn transpile(ast: Vec<Statement>, state: Option<state::State>) -> CodeOutput
                     let variable = state.heap_allocation_map.get(&name).unwrap();
                     let type_ = variable.type_();
                     let offset = variable.offset();
+
                     let CodeOutput { code, debug_code } =
                         IMP::Stack(StackOperations::PushNumber(offset)).gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
                     res.add(code, debug_code);
                     match type_ {
                         VariableType::Int => {
                             let CodeOutput { code, debug_code } =
+                                IMP::Heap(HeapOperations::Retrieve).gen();
+                            res.add(code, debug_code);
+
+                            let CodeOutput { code, debug_code } =
                                 IMP::IO(IOOperations::PrintAsNumber).gen();
                             res.add(code, debug_code);
                         }
+                        VariableType::String(_) => {
+                            let print_loop_start_label = state.get_label();
+                            let print_loop_end_label = state.get_label();
+                            let CodeOutput { code, debug_code } = IMP::FlowControl(
+                                FlowControlOperations::SetLabel(print_loop_start_label),
+                            )
+                            .gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } =
+                                IMP::Stack(StackOperations::Duplicate).gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } =
+                                IMP::Stack(StackOperations::Duplicate).gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } =
+                                IMP::Heap(HeapOperations::Retrieve).gen();
+                            res.add(code, debug_code);
+                            // Condition
+                            let CodeOutput { code, debug_code } = IMP::FlowControl(
+                                FlowControlOperations::JumpIfZero(print_loop_end_label),
+                            )
+                            .gen();
+                            res.add(code, debug_code);
+                            // Print
+                            let CodeOutput { code, debug_code } =
+                                IMP::Heap(HeapOperations::Retrieve).gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } =
+                                IMP::IO(IOOperations::PrintAsChar).gen();
+                            res.add(code, debug_code);
+                            // Advance pointer
+                            let CodeOutput { code, debug_code } = IMP::Stack(
+                                StackOperations::PushNumber(HeapVariableSize::Char.size()),
+                            )
+                            .gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } =
+                                IMP::Arithmetic(ArithmeticOperations::Add).gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } = IMP::FlowControl(
+                                FlowControlOperations::Jump(print_loop_start_label),
+                            )
+                            .gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } = IMP::FlowControl(
+                                FlowControlOperations::SetLabel(print_loop_end_label),
+                            )
+                            .gen();
+                            res.add(code, debug_code);
+                            let CodeOutput { code, debug_code } =
+                                IMP::Stack(StackOperations::Discard).gen();
+                            res.add(code, debug_code);
+                        }
                         _ => {
-                            panic!("Only integer values are supported for now");
+                            panic!("Only integer and string values are supported for now");
                         }
                     }
                 }

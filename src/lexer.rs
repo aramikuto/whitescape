@@ -2,6 +2,7 @@
 pub enum Token {
     Const,
     Int,
+    String,
     While,
     CurlyL,
     CurlyR,
@@ -14,6 +15,10 @@ pub enum Token {
     LParen,
     /// )
     RParen,
+    /// [
+    LSquare,
+    /// ]
+    RSquare,
     Comma,
 
     Plus,
@@ -43,9 +48,12 @@ impl std::fmt::Display for Token {
         let s: String = match self {
             Token::Const => "const".to_string(),
             Token::Int => "int".to_string(),
+            Token::String => "string".to_string(),
             Token::While => "while".to_string(),
             Token::CurlyL => "{".to_string(),
             Token::CurlyR => "}".to_string(),
+            Token::LSquare => "[".to_string(),
+            Token::RSquare => "]".to_string(),
             Token::Identifier(s) => s.clone(),
             Token::Assign => "=".to_string(),
             Token::Integer(i) => i.to_string(),
@@ -121,6 +129,14 @@ impl<'a> Lexer<'a> {
                     self.advance();
                     tokens.push(Token::Literal(value));
                 }
+                '[' => {
+                    tokens.push(Token::LSquare);
+                    self.advance();
+                }
+                ']' => {
+                    tokens.push(Token::RSquare);
+                    self.advance();
+                }
                 'a'..='z' | 'A'..='Z' => {
                     let mut identifier = String::new();
                     while let Some(ch) = self.peek() {
@@ -133,6 +149,7 @@ impl<'a> Lexer<'a> {
                     }
                     match identifier.as_str() {
                         "const" => tokens.push(Token::Const),
+                        "string" => tokens.push(Token::String),
                         "int" => tokens.push(Token::Int),
                         "print" => tokens.push(Token::Print),
                         "exit" => tokens.push(Token::Exit),

@@ -3,9 +3,10 @@ mod utils;
 
 pub enum StackOperations {
     PushNumber(i32),
-    //...
+    Duplicate,
+    CopyNth(i32),
     Swap,
-    //...
+    Discard,
     Slide(i32),
 }
 
@@ -17,9 +18,21 @@ impl StackOperations {
                 debug_code: format!("push {}", value),
                 code: format!("{} {}", Self::PREFIX, utils::encode_number(*value)),
             },
+            StackOperations::Duplicate => CodeOutput {
+                debug_code: format!("duplicate"),
+                code: format!("{}\n ", Self::PREFIX),
+            },
+            StackOperations::CopyNth(n) => CodeOutput {
+                debug_code: format!("copy_nth({})", n),
+                code: format!("{}\t {}", Self::PREFIX, utils::encode_number(*n)),
+            },
             StackOperations::Swap => CodeOutput {
                 debug_code: format!("swap"),
                 code: format!("{}\n\t", Self::PREFIX),
+            },
+            StackOperations::Discard => CodeOutput {
+                debug_code: format!("discard"),
+                code: format!("{}\n\n", Self::PREFIX),
             },
             StackOperations::Slide(n) => CodeOutput {
                 debug_code: format!("slide {}", n),

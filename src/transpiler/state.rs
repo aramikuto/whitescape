@@ -50,6 +50,9 @@ impl HeapAllocation {
             VariableType::Int => {
                 self.offset += HeapVariableSize::Int.size();
             }
+            VariableType::String(length) => {
+                self.offset += HeapVariableSize::String(length).size();
+            }
             _ => {
                 panic!("Only integer values are supported for now");
             }
@@ -83,6 +86,7 @@ impl State {
         }
     }
 
+    /// Returns a new sequential label
     pub fn get_label(&mut self) -> i32 {
         let label = self.current_label_n;
         self.current_label_n += 1;
