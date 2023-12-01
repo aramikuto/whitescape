@@ -4,7 +4,10 @@ use super::*;
 
 #[test]
 fn print() {
-    let input = vec![Statement::Print(Expression::Integer(99)), Statement::Exit];
+    let input = vec![
+        Statement::Call("print".to_string(), vec![Expression::Integer(99)]),
+        Statement::Exit,
+    ];
     let CodeOutput { code, .. } = transpile(input, None);
     assert_eq!(util::unbleach(code), "sssttsssttntnstnnn");
 }
@@ -23,7 +26,10 @@ fn print_from_heap() {
     let input = vec![
         Statement::IntDeclaration("m".to_string()),
         Statement::Assignment("m".to_string(), Expression::Integer(11)),
-        Statement::Print(Expression::Variable("m".to_string())),
+        Statement::Call(
+            "print".to_string(),
+            vec![Expression::Variable("m".to_string())],
+        ),
         Statement::Exit,
     ];
     let CodeOutput { code, .. } = transpile(input, None);
@@ -41,7 +47,10 @@ fn while_less_than() {
                 right: Box::new(Expression::Integer(11)),
             }),
             body: Box::new(Statement::Block(vec![
-                Statement::Print(Expression::Variable("m".to_string())),
+                Statement::Call(
+                    "print".to_string(),
+                    vec![Expression::Variable("m".to_string())],
+                ),
                 Statement::Assignment(
                     "m".to_string(),
                     Expression::BinaryOp {

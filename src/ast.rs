@@ -82,7 +82,6 @@ impl ToString for Expression {
 
 #[derive(Debug)]
 pub enum Statement {
-    Print(Expression),
     IntDeclaration(String),
     StringDeclaration(String, usize),
     Assignment(String, Expression),
@@ -183,7 +182,7 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
             Token::Print => {
                 tokens.next();
                 let expr = parse_expression(&mut tokens)?;
-                ast.push(Statement::Print(expr));
+                ast.push(Statement::Call("print".to_string(), vec![expr]));
 
                 if let Some(Token::Semicolon) = tokens.peek() {
                     tokens.next();
@@ -292,7 +291,7 @@ fn parse_statement(
         }
         Some(&Token::Print) => {
             let expr = parse_expression(tokens)?;
-            Statement::Print(expr)
+            Statement::Call("print".to_string(), vec![expr])
         }
         Some(&Token::Exit) => Statement::Exit,
         Some(&Token::While) => {

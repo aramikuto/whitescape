@@ -1,2 +1,2 @@
-pub mod IO;
-pub mod String;
+pub mod io;
+pub mod string;
