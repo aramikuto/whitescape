@@ -3,7 +3,7 @@ use crate::{
     specs::whitespace::{
         ArithmeticOperations, FlowControlOperations, HeapOperations, StackOperations, IMP,
     },
-    transpiler::{state::State, CodeOutput, HeapVariableSize, VariableType},
+    transpiler::{emitter::CodeEmitter, state::State, CodeOutput, HeapVariableSize, VariableType},
 };
 
 pub fn concat(state: &mut State, args: &Vec<Expression>, res: &mut CodeOutput) {
@@ -20,106 +20,55 @@ pub fn concat(state: &mut State, args: &Vec<Expression>, res: &mut CodeOutput) {
         let source_addr = source_variable.offset();
 
         match (target_type, source_type) {
-            (VariableType::String(target_length), VariableType::String(source_length)) => {
+            (VariableType::String(_), VariableType::String(_)) => {
                 let seek_start_label = state.get_label();
                 let seek_end_label = state.get_label();
-                // Set pointer to the end of the target string
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(target_addr)).gen();
-                res.add(code, debug_code);
-
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::SetLabel(seek_start_label)).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Duplicate).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::JumpIfZero(seek_end_label)).gen();
-                res.add(code, debug_code);
-                // Advance pointer
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::Arithmetic(ArithmeticOperations::Add).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::Jump(seek_start_label)).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::SetLabel(seek_end_label)).gen();
-                res.add(code, debug_code);
-
-                // Copy source string
                 let copy_start_label = state.get_label();
                 let copy_end_label = state.get_label();
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(source_addr)).gen();
-                res.add(code, debug_code);
 
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::SetLabel(copy_start_label)).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Duplicate).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::JumpIfZero(copy_end_label)).gen();
-                res.add(code, debug_code);
+                let mut emitter = CodeEmitter {};
 
-                // Copy char
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Duplicate).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::CopyNth(2)).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Store).gen();
-                res.add(code, debug_code);
-
-                // Advance target pointer
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::Arithmetic(ArithmeticOperations::Add).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
-                res.add(code, debug_code);
-                // Advance source pointer
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::Arithmetic(ArithmeticOperations::Add).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
-                res.add(code, debug_code);
-
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::Jump(copy_start_label)).gen();
-                res.add(code, debug_code);
-
-                let CodeOutput { code, debug_code } =
-                    IMP::FlowControl(FlowControlOperations::SetLabel(copy_end_label)).gen();
-                res.add(code, debug_code);
-                // Add null terminator
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Swap).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } =
-                    IMP::Stack(StackOperations::PushNumber(0)).gen();
-                res.add(code, debug_code);
-                let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Store).gen();
-                res.add(code, debug_code);
-
-                // Clean up
-                let CodeOutput { code, debug_code } = IMP::Stack(StackOperations::Discard).gen();
-                res.add(code, debug_code);
+                res.append(emitter.emit(vec![
+                    // Set pointer to the end of the target string
+                    IMP::Stack(StackOperations::PushNumber(target_addr)),
+                    IMP::FlowControl(FlowControlOperations::SetLabel(seek_start_label)),
+                    IMP::Stack(StackOperations::Duplicate),
+                    IMP::Heap(HeapOperations::Retrieve),
+                    IMP::FlowControl(FlowControlOperations::JumpIfZero(seek_end_label)),
+                    // Advance pointer
+                    IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())),
+                    IMP::Arithmetic(ArithmeticOperations::Add),
+                    IMP::FlowControl(FlowControlOperations::Jump(seek_start_label)),
+                    IMP::FlowControl(FlowControlOperations::SetLabel(seek_end_label)),
+                    // Copy source string
+                    IMP::Stack(StackOperations::PushNumber(source_addr)),
+                    IMP::FlowControl(FlowControlOperations::SetLabel(copy_start_label)),
+                    IMP::Stack(StackOperations::Duplicate),
+                    IMP::Heap(HeapOperations::Retrieve),
+                    IMP::FlowControl(FlowControlOperations::JumpIfZero(copy_end_label)),
+                    // Copy char
+                    IMP::Stack(StackOperations::Duplicate),
+                    IMP::Heap(HeapOperations::Retrieve),
+                    IMP::Stack(StackOperations::CopyNth(2)),
+                    IMP::Stack(StackOperations::Swap),
+                    IMP::Heap(HeapOperations::Store),
+                    // Advance target pointer
+                    IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())),
+                    IMP::Arithmetic(ArithmeticOperations::Add),
+                    IMP::Stack(StackOperations::Swap),
+                    // Advance source pointer
+                    IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())),
+                    IMP::Arithmetic(ArithmeticOperations::Add),
+                    IMP::Stack(StackOperations::Swap),
+                    IMP::FlowControl(FlowControlOperations::Jump(copy_start_label)),
+                    IMP::FlowControl(FlowControlOperations::SetLabel(copy_end_label)),
+                    // Add null terminator
+                    IMP::Stack(StackOperations::Swap),
+                    IMP::Stack(StackOperations::PushNumber(0)),
+                    IMP::Heap(HeapOperations::Store),
+                    // Clean up
+                    IMP::Stack(StackOperations::Discard),
+                ]));
             }
             _ => {
                 panic!("Only string values are supported for now");

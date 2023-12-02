@@ -4,6 +4,8 @@ mod utils;
 pub enum StackOperations {
     PushNumber(i32),
     Duplicate,
+    /// Copy the nth element from the top of the stack to the top of the stack
+    /// (the topmost element is at index 1).
     CopyNth(i32),
     Swap,
     Discard,
