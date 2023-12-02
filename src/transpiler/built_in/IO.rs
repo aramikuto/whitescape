@@ -56,6 +56,8 @@ pub fn read(state: &mut State, args: &Vec<Expression>, res: &mut CodeOutput) {
 
 pub fn print(state: &mut State, args: &Vec<Expression>, res: &mut CodeOutput) {
     let expression = args.get(0).unwrap();
+    let mut emitter = CodeEmitter {};
+
     match expression {
         Expression::Literal(value) => {
             for ch in value.chars() {
@@ -84,56 +86,29 @@ pub fn print(state: &mut State, args: &Vec<Expression>, res: &mut CodeOutput) {
             res.add(code, debug_code);
             match type_ {
                 VariableType::Int => {
-                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
-                    res.add(code, debug_code);
-
-                    let CodeOutput { code, debug_code } =
-                        IMP::IO(IOOperations::PrintAsNumber).gen();
-                    res.add(code, debug_code);
+                    res.append(emitter.emit(vec![IMP::Heap(HeapOperations::Retrieve)]));
+                    res.append(emitter.emit(vec![IMP::IO(IOOperations::PrintAsNumber)]));
                 }
                 VariableType::String(_) => {
                     let print_loop_start_label = state.get_label();
                     let print_loop_end_label = state.get_label();
-                    let CodeOutput { code, debug_code } =
-                        IMP::FlowControl(FlowControlOperations::SetLabel(print_loop_start_label))
-                            .gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } =
-                        IMP::Stack(StackOperations::Duplicate).gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } =
-                        IMP::Stack(StackOperations::Duplicate).gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
-                    res.add(code, debug_code);
-                    // Condition
-                    let CodeOutput { code, debug_code } =
-                        IMP::FlowControl(FlowControlOperations::JumpIfZero(print_loop_end_label))
-                            .gen();
-                    res.add(code, debug_code);
-                    // Print
-                    let CodeOutput { code, debug_code } = IMP::Heap(HeapOperations::Retrieve).gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } = IMP::IO(IOOperations::PrintAsChar).gen();
-                    res.add(code, debug_code);
-                    // Advance pointer
-                    let CodeOutput { code, debug_code } =
-                        IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size()))
-                            .gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } =
-                        IMP::Arithmetic(ArithmeticOperations::Add).gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } =
-                        IMP::FlowControl(FlowControlOperations::Jump(print_loop_start_label)).gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } =
-                        IMP::FlowControl(FlowControlOperations::SetLabel(print_loop_end_label))
-                            .gen();
-                    res.add(code, debug_code);
-                    let CodeOutput { code, debug_code } =
-                        IMP::Stack(StackOperations::Discard).gen();
-                    res.add(code, debug_code);
+                    res.append(emitter.emit(vec![
+                        IMP::FlowControl(FlowControlOperations::SetLabel(print_loop_start_label)),
+                        IMP::Stack(StackOperations::Duplicate),
+                        IMP::Stack(StackOperations::Duplicate),
+                        IMP::Heap(HeapOperations::Retrieve),
+                        // Condition
+                        IMP::FlowControl(FlowControlOperations::JumpIfZero(print_loop_end_label)),
+                        // Print
+                        IMP::Heap(HeapOperations::Retrieve),
+                        IMP::IO(IOOperations::PrintAsChar),
+                        // Advance pointer
+                        IMP::Stack(StackOperations::PushNumber(HeapVariableSize::Char.size())),
+                        IMP::Arithmetic(ArithmeticOperations::Add),
+                        IMP::FlowControl(FlowControlOperations::Jump(print_loop_start_label)),
+                        IMP::FlowControl(FlowControlOperations::SetLabel(print_loop_end_label)),
+                        IMP::Stack(StackOperations::Discard),
+                    ]));
                 }
                 _ => {
                     panic!("Only integer and string values are supported for now");
