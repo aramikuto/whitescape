@@ -219,52 +219,37 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
                     return Err("Expected (".to_string());
                 }
             }
-            Token::Identifier(name) => match name.as_str() {
-                "read" => {
+            Token::Identifier(name) => {
+                tokens.next();
+                if let Some(&Token::Assign) = tokens.peek() {
                     tokens.next();
                     let expr = parse_expression(&mut tokens)?;
-                    match expr {
-                        Expression::Variable(id) => ast.push(Statement::Call(
-                            name.clone(),
-                            vec![Expression::Variable(id)],
-                        )),
-                        _ => return Err(format!("Unexpected identifier: {}", name)),
-                    }
-                    if let Some(Token::Semicolon) = tokens.peek() {
-                        tokens.next();
-                    } else {
-                        return Err("Expected ;".to_string());
-                    }
-                }
-                "concat" => {
+                    ast.push(Statement::Assignment(name.clone(), expr));
+                } else if let Some(&Token::LParen) = tokens.peek() {
+                    let mut args = vec![];
                     tokens.next();
-                    if let Some(&Token::LParen) = tokens.peek() {
-                        tokens.next();
-                        let mut args = vec![];
-                        while let Some(&token) = tokens.peek() {
-                            match token {
-                                Token::RParen => {
-                                    tokens.next();
-                                    break;
-                                }
-                                Token::Comma => {
-                                    tokens.next();
-                                }
-                                _ => args.push(parse_expression(&mut tokens)?),
+                    while let Some(&token) = tokens.peek() {
+                        match token {
+                            Token::RParen => {
+                                tokens.next();
+                                break;
                             }
+                            Token::Comma => {
+                                tokens.next();
+                            }
+                            _ => args.push(parse_expression(&mut tokens)?),
                         }
-                        ast.push(Statement::Call(name.clone(), args));
-                    } else {
-                        return Err("Expected (".to_string());
                     }
-                    if let Some(Token::Semicolon) = tokens.peek() {
-                        tokens.next();
-                    } else {
-                        return Err("Expected ;".to_string());
-                    }
+                    ast.push(Statement::Call(name.clone(), args));
+                } else {
+                    return Err(format!("Unexpected identifier: {}", name));
                 }
-                _ => return Err(format!("Unexpected identifier: {}", name)),
-            },
+                if let Some(Token::Semicolon) = tokens.peek() {
+                    tokens.next();
+                } else {
+                    return Err("Expected ;".to_string());
+                }
+            }
             Token::EOF => break,
             _ => return Err(format!("Unexpected token: {:?}", token)),
         }
