@@ -1,2 +1,2 @@
-pub mod io;
-pub mod string;
+pub mod bi_io;
+pub mod bi_string;

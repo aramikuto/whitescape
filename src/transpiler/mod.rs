@@ -228,9 +228,9 @@ pub fn transpile(ast: Vec<Statement>, state: Option<state::State>) -> CodeOutput
                 }
             },
             Statement::Call(name, args) => match name.as_str() {
-                "read" => built_in::io::read(&mut state, &args, &mut res),
-                "concat" => built_in::string::concat(&mut state, &args, &mut res),
-                "print" => built_in::io::print(&mut state, &args, &mut res),
+                "read" => built_in::bi_io::read(&mut state, &args, &mut res),
+                "concat" => built_in::bi_string::concat(&mut state, &args, &mut res),
+                "print" => built_in::bi_io::print(&mut state, &args, &mut res),
                 _ => {
                     panic!("Unsupported function");
                 }
