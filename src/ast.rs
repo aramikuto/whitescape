@@ -1,4 +1,4 @@
-use crate::lexer::Token;
+use crate::lexer::{SourceToken, Token};
 
 #[derive(Debug)]
 pub enum Operation {
@@ -94,147 +94,305 @@ pub enum Statement {
     Block(Vec<Statement>),
 }
 
-pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
+pub fn parse(tokens: &Vec<SourceToken>) -> Result<Vec<Statement>, String> {
     let mut ast = vec![];
     let mut tokens = tokens.iter().peekable();
 
     while let Some(&token) = tokens.peek() {
         match token {
-            Token::Int => {
+            SourceToken {
+                token: Token::Int, ..
+            } => {
                 tokens.next();
                 let identifier = match tokens.next() {
-                    Some(&Token::Identifier(ref id)) => id.clone(),
-                    _ => return Err("Expected identifier".to_string()),
+                    Some(SourceToken {
+                        token: Token::Identifier(ref id),
+                        ..
+                    }) => id.clone(),
+                    _ => {
+                        return Err(format!(
+                            "Expected identifier at {}:{}",
+                            token.position.0, token.position.1
+                        ))
+                    }
                 };
                 ast.push(Statement::IntDeclaration(identifier.clone()));
-                if let Some(&Token::Assign) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Assign,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                     let expr = parse_expression(&mut tokens)?;
                     ast.push(Statement::Assignment(identifier, expr));
                 }
-                if let Some(Token::Semicolon) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Semicolon,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err("Expected ;".to_string());
+                    return Err(format!(
+                        "Expected ; after {}:{}, found {:?}",
+                        token.position.0,
+                        token.position.1,
+                        tokens.peek().unwrap().token
+                    ));
                 }
             }
-            Token::String => {
+            SourceToken {
+                token: Token::String,
+                ..
+            } => {
                 tokens.next();
-                if let Some(&Token::LSquare) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::LSquare,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err(format!("Expected [, found {:?}", tokens.peek()));
+                    return Err(format!(
+                        "Expected [, found {:?} at {}:{}",
+                        tokens.peek().unwrap().token,
+                        tokens.peek().unwrap().position.0,
+                        tokens.peek().unwrap().position.1
+                    ));
                 }
                 let length = match tokens.next() {
-                    Some(&Token::Integer(value)) => {
-                        if value <= 0 {
-                            return Err("String size must be greater than 0".to_string());
+                    Some(SourceToken {
+                        token: Token::Integer(value),
+                        ..
+                    }) => {
+                        if value <= &0 {
+                            return Err(format!(
+                                "String size must be greater than 0 at {}:{}",
+                                token.position.0, token.position.1
+                            ));
                         }
-                        let value = value as usize;
-                        if let Some(&Token::RSquare) = tokens.peek() {
+                        let value = *value as usize;
+                        if let Some(SourceToken {
+                            token: Token::RSquare,
+                            ..
+                        }) = tokens.peek()
+                        {
                             tokens.next();
                             value
                         } else {
-                            return Err("Expected ]".to_string());
+                            return Err(format!(
+                                "Expected ] at {}:{}",
+                                token.position.0, token.position.1
+                            ));
                         }
                     }
-                    _ => return Err("Expected integer value".to_string()),
+                    _ => {
+                        return Err(format!(
+                            "Expected integer value at {}:{}",
+                            token.position.0, token.position.1,
+                        ))
+                    }
                 };
                 let identifier = match tokens.next() {
-                    Some(&Token::Identifier(ref id)) => id.clone(),
-                    _ => return Err("Expected identifier".to_string()),
+                    Some(SourceToken {
+                        token: Token::Identifier(ref id),
+                        ..
+                    }) => id.clone(),
+                    _ => {
+                        return Err(format!(
+                            "Expected identifier at {}:{}",
+                            token.position.0, token.position.1
+                        ))
+                    }
                 };
                 ast.push(Statement::StringDeclaration(identifier.clone(), length));
-                if let Some(&Token::Assign) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Assign,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                     let expr = parse_expression(&mut tokens)?;
                     ast.push(Statement::Assignment(identifier, expr));
                 }
-                if let Some(Token::Semicolon) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Semicolon,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err("Expected ;".to_string());
+                    return Err(format!(
+                        "Expected ; after {}:{}, found {:?}",
+                        token.position.0,
+                        token.position.1,
+                        tokens.peek().unwrap().token
+                    ));
                 }
             }
             // TODO: Delete?
-            Token::Const => {
+            SourceToken {
+                token: Token::Const,
+                ..
+            } => {
                 tokens.next();
                 let identifier = match tokens.next() {
-                    Some(&Token::Identifier(ref id)) => id.clone(),
-                    _ => return Err("Expected identifier".to_string()),
+                    Some(SourceToken {
+                        token: Token::Identifier(ref id),
+                        ..
+                    }) => id.clone(),
+                    _ => {
+                        return Err(format!(
+                            "Expected identifier at {}:{}",
+                            token.position.0, token.position.1
+                        ))
+                    }
                 };
-                if let Some(&Token::Integer(value)) = tokens.next() {
+                if let Some(SourceToken {
+                    token: Token::Integer(value),
+                    ..
+                }) = tokens.next()
+                {
                     ast.push(Statement::IntDeclaration(identifier.clone()));
                     ast.push(Statement::Assignment(
                         identifier,
-                        Expression::Integer(value),
+                        Expression::Integer(*value),
                     ));
                 } else {
-                    return Err("Expected integer value".to_string());
+                    return Err(format!(
+                        "Expected integer value at {}:{}",
+                        token.position.0, token.position.1
+                    ));
                 }
 
-                if let Some(Token::Semicolon) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Semicolon,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err("Expected ;".to_string());
+                    return Err(format!(
+                        "Expected ; after {}:{}, found {:?}",
+                        token.position.0,
+                        token.position.1,
+                        tokens.peek().unwrap().token
+                    ));
                 }
             }
-            Token::Print => {
+            SourceToken {
+                token: Token::Print,
+                ..
+            } => {
                 tokens.next();
                 let expr = parse_expression(&mut tokens)?;
                 ast.push(Statement::Call("print".to_string(), vec![expr]));
 
-                if let Some(Token::Semicolon) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Semicolon,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err("Expected ;".to_string());
+                    return Err(format!(
+                        "Expected ; after {}:{}, found {:?}",
+                        token.position.0,
+                        token.position.1,
+                        tokens.peek().unwrap().token
+                    ));
                 }
             }
-            Token::Exit => {
+            SourceToken {
+                token: Token::Exit, ..
+            } => {
                 tokens.next();
                 ast.push(Statement::Exit);
 
-                if let Some(Token::Semicolon) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Semicolon,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err("Expected ;".to_string());
+                    return Err(format!(
+                        "Expected ; after {}:{}, found {:?}",
+                        token.position.0,
+                        token.position.1,
+                        tokens.peek().unwrap().token
+                    ));
                 }
             }
-            Token::While => {
+            SourceToken {
+                token: Token::While,
+                ..
+            } => {
                 tokens.next();
-                if let Some(&Token::LParen) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::LParen,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                     let condition: Expression = parse_expression(&mut tokens)?;
 
-                    if let Some(&Token::RParen) = tokens.peek() {
+                    if let Some(SourceToken {
+                        token: Token::RParen,
+                        ..
+                    }) = tokens.peek()
+                    {
                         tokens.next();
                         ast.push(Statement::WhileLoop {
                             condition: Box::new(condition),
                             body: Box::new(parse_statement(&mut tokens)?),
                         });
                     } else {
-                        return Err("Expected )".to_string());
+                        return Err(format!(
+                            "Expected ) at {}:{}",
+                            token.position.0, token.position.1
+                        ));
                     }
                 } else {
-                    return Err("Expected (".to_string());
+                    return Err(format!(
+                        "Expected ( at {}:{}",
+                        token.position.0, token.position.1
+                    ));
                 }
             }
-            Token::Identifier(name) => {
+            SourceToken {
+                token: Token::Identifier(name),
+                ..
+            } => {
                 tokens.next();
-                if let Some(&Token::Assign) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Assign,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                     let expr = parse_expression(&mut tokens)?;
                     ast.push(Statement::Assignment(name.clone(), expr));
-                } else if let Some(&Token::LParen) = tokens.peek() {
+                } else if let Some(SourceToken {
+                    token: Token::LParen,
+                    ..
+                }) = tokens.peek()
+                {
                     let mut args = vec![];
                     tokens.next();
                     while let Some(&token) = tokens.peek() {
                         match token {
-                            Token::RParen => {
+                            SourceToken {
+                                token: Token::RParen,
+                                ..
+                            } => {
                                 tokens.next();
                                 break;
                             }
-                            Token::Comma => {
+                            SourceToken {
+                                token: Token::Comma,
+                                ..
+                            } => {
                                 tokens.next();
                             }
                             _ => args.push(parse_expression(&mut tokens)?),
@@ -242,16 +400,35 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
                     }
                     ast.push(Statement::Call(name.clone(), args));
                 } else {
-                    return Err(format!("Unexpected identifier: {}", name));
+                    return Err(format!(
+                        "Unexpected identifier: {} at {}:{}",
+                        name, token.position.0, token.position.1
+                    ));
                 }
-                if let Some(Token::Semicolon) = tokens.peek() {
+                if let Some(SourceToken {
+                    token: Token::Semicolon,
+                    ..
+                }) = tokens.peek()
+                {
                     tokens.next();
                 } else {
-                    return Err("Expected ;".to_string());
+                    return Err(format!(
+                        "Expected ; after {}:{}, found {:?}",
+                        token.position.0,
+                        token.position.1,
+                        tokens.peek().unwrap().token
+                    ));
                 }
             }
-            Token::EOF => break,
-            _ => return Err(format!("Unexpected token: {:?}", token)),
+            SourceToken {
+                token: Token::EOF, ..
+            } => break,
+            _ => {
+                return Err(format!(
+                    "Unexpected token: {:?} at {}:{}",
+                    token.token, token.position.0, token.position.1
+                ))
+            }
         }
     }
 
@@ -259,35 +436,70 @@ pub fn parse(tokens: &Vec<Token>) -> Result<Vec<Statement>, String> {
 }
 
 fn parse_statement(
-    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, SourceToken>>,
 ) -> Result<Statement, String> {
     let token = tokens.next();
     let statement = match token {
-        Some(&Token::Const) => {
+        Some(SourceToken {
+            token: Token::Const,
+            ..
+        }) => {
             let identifier = match tokens.next() {
-                Some(&Token::Identifier(ref id)) => id.clone(),
-                _ => return Err("Expected identifier".to_string()),
+                Some(SourceToken {
+                    token: Token::Identifier(ref id),
+                    ..
+                }) => id.clone(),
+                _ => {
+                    return Err(format!(
+                        "Expected identifier at {}:{}",
+                        token.unwrap().position.0,
+                        token.unwrap().position.1
+                    ))
+                }
             };
-            if let Some(&Token::Integer(value)) = tokens.next() {
+            if let Some(SourceToken {
+                token: Token::Integer(value),
+                ..
+            }) = tokens.next()
+            {
                 Statement::IntDeclaration(identifier)
             } else {
-                return Err("Expected integer value".to_string());
+                return Err(format!(
+                    "Expected integer value at {}:{}",
+                    token.unwrap().position.0,
+                    token.unwrap().position.1
+                ));
             }
         }
-        Some(&Token::Print) => {
+        Some(SourceToken {
+            token: Token::Print,
+            ..
+        }) => {
             let expr = parse_expression(tokens)?;
             Statement::Call("print".to_string(), vec![expr])
         }
-        Some(&Token::Exit) => Statement::Exit,
-        Some(&Token::While) => {
+        Some(SourceToken {
+            token: Token::Exit, ..
+        }) => Statement::Exit,
+        Some(SourceToken {
+            token: Token::While,
+            ..
+        }) => {
             tokens.next();
-            if let Some(&Token::LParen) = tokens.peek() {
+            if let Some(SourceToken {
+                token: Token::LParen,
+                ..
+            }) = tokens.peek()
+            {
                 tokens.next();
                 let condition: Expression = parse_expression(tokens)?;
                 let mut body: Vec<Statement> = vec![];
                 while let Some(&token) = tokens.peek() {
                     match token {
-                        Token::RParen => {
+                        SourceToken {
+                            token: Token::RParen,
+                            ..
+                        } => {
                             tokens.next();
                             break;
                         }
@@ -299,27 +511,51 @@ fn parse_statement(
                     body: Box::new(Statement::Block(body)),
                 }
             } else {
-                return Err("Expected (".to_string());
+                return Err(format!(
+                    "Expected ( at {}:{}",
+                    token.unwrap().position.0,
+                    token.unwrap().position.1
+                ));
             }
         }
-        Some(&Token::Identifier(ref id)) => {
-            if let Some(&Token::Assign) = tokens.peek() {
+        Some(SourceToken {
+            token: Token::Identifier(ref id),
+            ..
+        }) => {
+            if let Some(SourceToken {
+                token: Token::Assign,
+                ..
+            }) = tokens.peek()
+            {
                 tokens.next();
                 let expr = parse_expression(tokens)?;
                 Statement::Assignment(id.clone(), expr)
             } else {
-                return Err("Expected =".to_string());
+                return Err(format!(
+                    "Expected = at {}:{}",
+                    token.unwrap().position.0,
+                    token.unwrap().position.1
+                ));
             }
         }
-        Some(&Token::CurlyL) => {
+        Some(SourceToken {
+            token: Token::CurlyL,
+            ..
+        }) => {
             let mut body: Vec<Statement> = vec![];
             while let Some(&token) = tokens.peek() {
                 match token {
-                    Token::CurlyR => {
+                    SourceToken {
+                        token: Token::CurlyR,
+                        ..
+                    } => {
                         tokens.next();
                         break;
                     }
-                    Token::Semicolon => {
+                    SourceToken {
+                        token: Token::Semicolon,
+                        ..
+                    } => {
                         tokens.next();
                     }
                     _ => body.push(parse_statement(tokens)?),
@@ -327,19 +563,28 @@ fn parse_statement(
             }
             Statement::Block(body)
         }
-        _ => return Err(format!("Statement, unexpected token: {:?}", token)),
+        _ => {
+            return Err(format!(
+                "Statement, unexpected token: {:?} at {}:{}",
+                token.unwrap().token,
+                token.unwrap().position.0,
+                token.unwrap().position.1
+            ))
+        }
     };
 
     Ok(statement)
 }
 
 fn parse_expression(
-    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, SourceToken>>,
 ) -> Result<Expression, String> {
     let mut expr: Expression = parse_factor(tokens)?;
     while let Some(&token) = tokens.peek() {
         match token {
-            Token::Plus => {
+            SourceToken {
+                token: Token::Plus, ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -348,7 +593,10 @@ fn parse_expression(
                     right: Box::new(right),
                 };
             }
-            Token::Minus => {
+            SourceToken {
+                token: Token::Minus,
+                ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -357,7 +605,9 @@ fn parse_expression(
                     right: Box::new(right),
                 };
             }
-            Token::Star => {
+            SourceToken {
+                token: Token::Star, ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -366,7 +616,10 @@ fn parse_expression(
                     right: Box::new(right),
                 };
             }
-            Token::Slash => {
+            SourceToken {
+                token: Token::Slash,
+                ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -375,7 +628,10 @@ fn parse_expression(
                     right: Box::new(right),
                 };
             }
-            Token::Percent => {
+            SourceToken {
+                token: Token::Percent,
+                ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -384,7 +640,10 @@ fn parse_expression(
                     right: Box::new(right),
                 };
             }
-            Token::Equals => {
+            SourceToken {
+                token: Token::Equals,
+                ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -393,7 +652,9 @@ fn parse_expression(
                     right: Box::new(right),
                 };
             }
-            Token::Less => {
+            SourceToken {
+                token: Token::Less, ..
+            } => {
                 tokens.next();
                 let right = parse_factor(tokens)?;
                 expr = Expression::BinaryOp {
@@ -409,12 +670,14 @@ fn parse_expression(
 }
 
 fn parse_factor(
-    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, SourceToken>>,
 ) -> Result<Expression, String> {
     let mut expr: Expression = parse_unary(tokens)?;
     while let Some(&token) = tokens.peek() {
         match token {
-            Token::Star => {
+            SourceToken {
+                token: Token::Star, ..
+            } => {
                 tokens.next();
                 let right = parse_unary(tokens)?;
                 expr = Expression::BinaryOp {
@@ -423,7 +686,10 @@ fn parse_factor(
                     right: Box::new(right),
                 };
             }
-            Token::Slash => {
+            SourceToken {
+                token: Token::Slash,
+                ..
+            } => {
                 tokens.next();
                 let right = parse_unary(tokens)?;
                 expr = Expression::BinaryOp {
@@ -432,7 +698,10 @@ fn parse_factor(
                     right: Box::new(right),
                 };
             }
-            Token::Percent => {
+            SourceToken {
+                token: Token::Percent,
+                ..
+            } => {
                 tokens.next();
                 let right = parse_unary(tokens)?;
                 expr = Expression::BinaryOp {
@@ -448,7 +717,7 @@ fn parse_factor(
 }
 
 fn parse_unary(
-    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, SourceToken>>,
 ) -> Result<Expression, String> {
     let mut expr: Expression = parse_primary(tokens)?;
     while let Some(&token) = tokens.peek() {
@@ -468,23 +737,50 @@ fn parse_unary(
 }
 
 fn parse_primary(
-    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, Token>>,
+    tokens: &mut std::iter::Peekable<std::slice::Iter<'_, SourceToken>>,
 ) -> Result<Expression, String> {
     let token = tokens.next();
     let expr = match token {
-        Some(&Token::Literal(ref value)) => Expression::Literal(value.clone()),
-        Some(&Token::Integer(value)) => Expression::Integer(value),
-        Some(&Token::Identifier(ref id)) => Expression::Variable(id.clone()),
-        Some(&Token::LParen) => {
+        Some(SourceToken {
+            token: Token::Literal(ref value),
+            ..
+        }) => Expression::Literal(value.clone()),
+        Some(SourceToken {
+            token: Token::Integer(value),
+            ..
+        }) => Expression::Integer(*value),
+        Some(SourceToken {
+            token: Token::Identifier(ref id),
+            ..
+        }) => Expression::Variable(id.clone()),
+        Some(SourceToken {
+            token: Token::LParen,
+            ..
+        }) => {
             let expr = parse_expression(tokens)?;
-            if let Some(&Token::RParen) = tokens.peek() {
+            if let Some(SourceToken {
+                token: Token::RParen,
+                ..
+            }) = tokens.peek()
+            {
                 tokens.next();
                 expr
             } else {
-                return Err("Expected )".to_string());
+                return Err(format!(
+                    "Expected ) at {}:{}",
+                    token.unwrap().position.0,
+                    token.unwrap().position.1
+                ));
             }
         }
-        _ => return Err(format!("Primary, unexpected token: {:?}", token)),
+        _ => {
+            return Err(format!(
+                "Primary, unexpected token: {:?} at {}:{}",
+                token.unwrap().token,
+                token.unwrap().position.0,
+                token.unwrap().position.1,
+            ))
+        }
     };
 
     Ok(expr)

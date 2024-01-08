@@ -19,7 +19,7 @@ fn main() {
     exit;
     ";
     let mut lexer = lexer::Lexer::new(code);
-    let tokens: Vec<lexer::Token> = lexer.tokenize();
+    let tokens: Vec<lexer::SourceToken> = lexer.tokenize();
     println!("---TOKENS---\n{:?}\n", tokens);
 
     match ast::parse(&tokens) {

@@ -1,5 +1,7 @@
 #[derive(Debug)]
 pub enum Token {
+    Func,
+    Return,
     Const,
     Int,
     String,
@@ -43,9 +45,26 @@ pub enum Token {
     EOF,
 }
 
+#[derive(Debug)]
+pub struct SourceToken {
+    pub token: Token,
+    pub position: (usize, usize),
+}
+
+impl SourceToken {
+    pub fn get(token: Token, position: (usize, usize)) -> Self {
+        SourceToken {
+            token,
+            position: position,
+        }
+    }
+}
+
 impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let s: String = match self {
+            Token::Func => "func".to_string(),
+            Token::Return => "return".to_string(),
             Token::Const => "const".to_string(),
             Token::Int => "int".to_string(),
             Token::String => "string".to_string(),
@@ -110,12 +129,31 @@ impl<'a> Lexer<'a> {
         value.parse::<i32>().unwrap()
     }
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
-        let mut tokens = vec![];
+    fn getFileLocation(&self) -> (usize, usize) {
+        // TODO: This is a very inefficient way to do this!
+        let mut line = 1;
+        let mut column = 1;
+        for (i, ch) in self.input.chars().enumerate() {
+            if i == self.position {
+                break;
+            }
+            if ch == '\n' {
+                line += 1;
+                column = 1;
+            } else {
+                column += 1;
+            }
+        }
+        (line, column)
+    }
+
+    pub fn tokenize(&mut self) -> Vec<SourceToken> {
+        let mut tokens: Vec<SourceToken> = vec![];
 
         while let Some(ch) = self.peek() {
             match ch {
                 '"' => {
+                    let start_pos = self.getFileLocation();
                     self.advance();
                     let mut value = String::new();
                     while let Some(ch) = self.peek() {
@@ -127,17 +165,18 @@ impl<'a> Lexer<'a> {
                         }
                     }
                     self.advance();
-                    tokens.push(Token::Literal(value));
+                    tokens.push(SourceToken::get(Token::Literal(value), start_pos));
                 }
                 '[' => {
-                    tokens.push(Token::LSquare);
+                    tokens.push(SourceToken::get(Token::LSquare, self.getFileLocation()));
                     self.advance();
                 }
                 ']' => {
-                    tokens.push(Token::RSquare);
+                    tokens.push(SourceToken::get(Token::RSquare, self.getFileLocation()));
                     self.advance();
                 }
                 'a'..='z' | 'A'..='Z' => {
+                    let start_pos = self.getFileLocation();
                     let mut identifier = String::new();
                     while let Some(ch) = self.peek() {
                         if ch.is_ascii_alphanumeric() || ch == '_' {
@@ -148,94 +187,102 @@ impl<'a> Lexer<'a> {
                         }
                     }
                     match identifier.as_str() {
-                        "const" => tokens.push(Token::Const),
-                        "string" => tokens.push(Token::String),
-                        "int" => tokens.push(Token::Int),
-                        "print" => tokens.push(Token::Print),
-                        "exit" => tokens.push(Token::Exit),
-                        "while" => tokens.push(Token::While),
-                        "proc" => tokens.push(Token::Procedure),
-                        _ => tokens.push(Token::Identifier(identifier)),
+                        "func" => tokens.push(SourceToken::get(Token::Func, start_pos)),
+                        "return" => tokens.push(SourceToken::get(Token::Return, start_pos)),
+                        "const" => tokens.push(SourceToken::get(Token::Const, start_pos)),
+                        "string" => tokens.push(SourceToken::get(Token::String, start_pos)),
+                        "int" => tokens.push(SourceToken::get(Token::Int, start_pos)),
+                        "print" => tokens.push(SourceToken::get(Token::Print, start_pos)),
+                        "exit" => tokens.push(SourceToken::get(Token::Exit, start_pos)),
+                        "while" => tokens.push(SourceToken::get(Token::While, start_pos)),
+                        _ => {
+                            tokens.push(SourceToken::get(Token::Identifier(identifier), start_pos))
+                        }
                     }
                 }
                 '0'..='9' => {
+                    let start_pos = self.getFileLocation();
                     let value: i32 = self.read_integer();
-                    tokens.push(Token::Integer(value));
+                    tokens.push(SourceToken::get(Token::Integer(value), start_pos));
                 }
                 '-' => {
+                    let start_pos = self.getFileLocation();
                     self.advance();
                     if let Some(ch) = self.peek() {
                         if ch.is_digit(10) {
                             let value = self.read_integer();
-                            tokens.push(Token::Integer(-value));
+                            tokens.push(SourceToken::get(Token::Integer(-value), start_pos));
                         } else {
-                            tokens.push(Token::Minus);
+                            tokens.push(SourceToken::get(Token::Minus, start_pos));
                         }
                     }
                 }
                 ',' => {
-                    tokens.push(Token::Comma);
+                    tokens.push(SourceToken::get(Token::Comma, self.getFileLocation()));
                     self.advance();
                 }
                 '+' => {
+                    let start_pos = self.getFileLocation();
                     self.advance();
                     if let Some(ch) = self.peek() {
                         if ch.is_digit(10) {
                             let value = self.read_integer();
-                            tokens.push(Token::Integer(value));
+                            tokens.push(SourceToken::get(Token::Integer(value), start_pos));
                         } else {
-                            tokens.push(Token::Plus);
+                            tokens.push(SourceToken::get(Token::Plus, start_pos));
                         }
                     }
                 }
                 '*' => {
-                    tokens.push(Token::Star);
+                    tokens.push(SourceToken::get(Token::Star, self.getFileLocation()));
                     self.advance();
                 }
                 '/' => {
-                    tokens.push(Token::Slash);
+                    tokens.push(SourceToken::get(Token::Slash, self.getFileLocation()));
                     self.advance();
                 }
                 '%' => {
-                    tokens.push(Token::Percent);
+                    tokens.push(SourceToken::get(Token::Percent, self.getFileLocation()));
                     self.advance();
                 }
                 '(' => {
-                    tokens.push(Token::LParen);
+                    tokens.push(SourceToken::get(Token::LParen, self.getFileLocation()));
                     self.advance();
                 }
                 ')' => {
-                    tokens.push(Token::RParen);
+                    tokens.push(SourceToken::get(Token::RParen, self.getFileLocation()));
                     self.advance();
                 }
                 '{' => {
-                    tokens.push(Token::CurlyL);
+                    tokens.push(SourceToken::get(Token::CurlyL, self.getFileLocation()));
                     self.advance();
                 }
                 '}' => {
-                    tokens.push(Token::CurlyR);
+                    tokens.push(SourceToken::get(Token::CurlyR, self.getFileLocation()));
                     self.advance();
                 }
                 ';' => {
-                    tokens.push(Token::Semicolon);
+                    tokens.push(SourceToken::get(Token::Semicolon, self.getFileLocation()));
                     self.advance();
                 }
                 '=' => {
+                    let start_pos = self.getFileLocation();
                     self.advance();
                     if self.peek() == Some('=') {
-                        tokens.push(Token::Equals);
+                        tokens.push(SourceToken::get(Token::Equals, start_pos));
                         self.advance();
                     } else {
-                        tokens.push(Token::Assign);
+                        tokens.push(SourceToken::get(Token::Assign, start_pos));
                     }
                 }
                 '<' => {
+                    let start_pos = self.getFileLocation();
                     self.advance();
                     if self.peek() == Some('=') {
-                        tokens.push(Token::LessOrEqual);
+                        tokens.push(SourceToken::get(Token::LessOrEqual, start_pos));
                         self.advance();
                     } else {
-                        tokens.push(Token::Less);
+                        tokens.push(SourceToken::get(Token::Less, start_pos));
                     }
                 }
                 _ => {
@@ -243,7 +290,7 @@ impl<'a> Lexer<'a> {
                 }
             }
         }
-        tokens.push(Token::EOF);
+        tokens.push(SourceToken::get(Token::EOF, self.getFileLocation()));
         tokens
     }
 }

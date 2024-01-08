@@ -10,7 +10,7 @@ mod util;
 #[wasm_bindgen]
 pub fn gen_ast(code: &str) -> JsValue {
     let mut lexer = lexer::Lexer::new(code);
-    let tokens: Vec<lexer::Token> = lexer.tokenize();
+    let tokens: Vec<lexer::SourceToken> = lexer.tokenize();
     let ast = ast::parse(&tokens);
     JsValue::from_str(format!("{:#?}", ast).as_str())
 }
@@ -40,7 +40,7 @@ impl InterpreterOutput {
 #[wasm_bindgen]
 pub fn gen_all(code: &str) -> InterpreterOutput {
     let mut lexer = lexer::Lexer::new(code);
-    let tokens: Vec<lexer::Token> = lexer.tokenize();
+    let tokens: Vec<lexer::SourceToken> = lexer.tokenize();
     let ast = ast::parse(&tokens);
     match ast {
         Ok(ast) => {
